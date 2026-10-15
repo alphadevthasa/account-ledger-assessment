@@ -12,5 +12,6 @@ let package = Package(
         .target(name: "LedgerCore"),
         .executableTarget(name: "LedgerReplay", dependencies: ["LedgerCore"]),
         .testTarget(name: "LedgerCoreTests", dependencies: ["LedgerCore"]),
+        .testTarget(name: "KnownLimitations", dependencies: ["LedgerCore"]),
     ]
 )
