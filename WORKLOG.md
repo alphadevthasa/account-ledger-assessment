@@ -14,6 +14,6 @@ required before submission and live defense.
 | 00:34 | Ran the supplied fixture test red with `LedgerFixture` missing; implemented the fixture and replay runner. The first fixture test compile failed due to `ArraySlice` versus `Array` assertion types; corrected the assertion, then the fixture test passed. |
 | 00:35 | Ran `RUN_KNOWN_FAILURE=1 swift test --filter HoldExpiryFailingTest`; it failed as intended because an approved hold does not expire in this model. |
 | 00:36 | Ran the full default `swift test` suite: 13 tests, 1 expected skip, 0 failures. Ran `swift run LedgerReplay` and inspected all six reported days and both historical checkpoints. |
+| 00:39 | Wrote the four-part architecture note, created a four-page PDF, rendered every page, and checked text extraction and page count. |
 
-PDF creation, candidate review, and publication will be
-recorded with their actual times when performed.
+Publication and final checks will be recorded with their actual times when performed.
