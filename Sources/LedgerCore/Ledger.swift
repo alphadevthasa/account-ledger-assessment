@@ -33,6 +33,7 @@ struct LedgerEntry: Equatable {
     let valueDay: Int
     let minorUnits: Int64
     let source: Source
+    let originArrival: Int
 }
 
 struct AuthorizationRecord {
@@ -45,7 +46,10 @@ public final class Ledger {
     public private(set) var processed: [ProcessedEvent] = []
     var entries: [LedgerEntry] = []
     var authorizations: [String: AuthorizationRecord] = [:]
-    private var snapshots: [Int: LedgerSnapshot] = [:]
+    var snapshots: [Int: LedgerSnapshot] = [:]
+    var latestObservedDay = 0
+    var reversedEventIDs: Set<String> = []
+    var interestCapitalized = false
 
     public init() {}
 
@@ -65,6 +69,10 @@ public final class Ledger {
         }
 
         processed.append(ProcessedEvent(event: event, outcome: outcome))
+        latestObservedDay = max(latestObservedDay, event.bookedDay)
+        if outcome == .accepted {
+            reconcileFees(through: latestObservedDay, originArrival: event.arrival)
+        }
         snapshots[event.arrival] = currentSnapshot()
         return outcome
     }
@@ -78,11 +86,23 @@ public final class Ledger {
         switch event.kind {
         case .credit(let amount):
             entries.append(LedgerEntry(account: event.account, valueDay: event.valueDay,
-                                       minorUnits: amount.minorUnits, source: .event(event.id)))
+                                       minorUnits: amount.minorUnits, source: .event(event.id),
+                                       originArrival: event.arrival))
+            return .accepted
+        case .installmentCredit(let total, let count):
+            guard let parts = try? total.split(count: count) else {
+                return .rejected("invalid installment split")
+            }
+            for part in parts {
+                entries.append(LedgerEntry(account: event.account, valueDay: event.valueDay,
+                                           minorUnits: part.minorUnits, source: .event(event.id),
+                                           originArrival: event.arrival))
+            }
             return .accepted
         case .debit(let amount):
             entries.append(LedgerEntry(account: event.account, valueDay: event.valueDay,
-                                       minorUnits: -amount.minorUnits, source: .event(event.id)))
+                                       minorUnits: -amount.minorUnits, source: .event(event.id),
+                                       originArrival: event.arrival))
             return .accepted
         case .authorization(let id, let hold):
             guard authorizations[id] == nil else { return .rejected("duplicate authorization \(id)") }
@@ -103,14 +123,28 @@ public final class Ledger {
             authorization.status = .settled
             authorizations[id] = authorization
             entries.append(LedgerEntry(account: event.account, valueDay: event.valueDay,
-                                       minorUnits: -amount.minorUnits, source: .event(event.id)))
+                                       minorUnits: -amount.minorUnits, source: .event(event.id),
+                                       originArrival: event.arrival))
             return .accepted
-        case .reversal, .feeCharge, .feeReversal, .interestCredit:
+        case .reversal(let originalID):
+            guard !reversedEventIDs.contains(originalID),
+                  let original = processed.first(where: { $0.event.id == originalID && $0.outcome == .accepted }),
+                  case .debit(let amount) = original.event.kind,
+                  original.event.account == event.account,
+                  original.event.valueDay == event.valueDay else {
+                return .rejected("invalid reversal target \(originalID)")
+            }
+            reversedEventIDs.insert(originalID)
+            entries.append(LedgerEntry(account: event.account, valueDay: event.valueDay,
+                                       minorUnits: amount.minorUnits, source: .event(event.id),
+                                       originArrival: event.arrival))
+            return .accepted
+        case .feeCharge, .feeReversal, .interestCredit:
             return .rejected("unsupported event kind")
         }
     }
 
-    private func currentSnapshot() -> LedgerSnapshot {
+    func currentSnapshot() -> LedgerSnapshot {
         var balances: [AccountID: Money] = [:]
         var available: [AccountID: Money] = [:]
         for account in AccountID.allCases {
@@ -144,6 +178,7 @@ private extension EventKind {
         switch self {
         case .credit(let amount), .debit(let amount), .interestCredit(let amount),
              .feeCharge(let amount), .feeReversal(let amount): amount
+        case .installmentCredit(let total, _): total
         case .authorization(_, let hold): hold
         case .settlement(_, let amount): amount
         case .reversal: nil

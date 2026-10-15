@@ -7,6 +7,7 @@ public enum AccountID: String, CaseIterable, Sendable {
 
 public enum EventKind: Equatable, Sendable {
     case credit(Money)
+    case installmentCredit(total: Money, count: Int)
     case debit(Money)
     case authorization(id: String, hold: Money)
     case settlement(id: String, amount: Money)
