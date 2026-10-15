@@ -15,5 +15,6 @@ required before submission and live defense.
 | 00:35 | Ran `RUN_KNOWN_FAILURE=1 swift test --filter HoldExpiryFailingTest`; it failed as intended because an approved hold does not expire in this model. |
 | 00:36 | Ran the full default `swift test` suite: 13 tests, 1 expected skip, 0 failures. Ran `swift run LedgerReplay` and inspected all six reported days and both historical checkpoints. |
 | 00:39 | Wrote the four-part architecture note, created a four-page PDF, rendered every page, and checked text extraction and page count. |
+| 04:43 | Re-ran `swift test` (13 tests, 1 expected skip, 0 failures) and `swift run LedgerReplay`; created the public GitHub repository, pushed all seven commits, and confirmed anonymous access in Incognito. Uploaded the repository URL and four-page PDF to Mal Careers and received the successful-submission confirmation. |
 
-Publication and final checks will be recorded with their actual times when performed.
+The submission page confirmed that responses are being graded.
